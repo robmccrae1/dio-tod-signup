@@ -89,14 +89,19 @@ For Google OAuth to work locally, two URLs need to be allowed:
    ```
    Don't add `localhost` here — Supabase handles the bounce back to your site URL.
 
-## Editing the data
+## Managing the live system
 
-> ⚠️ **Always include a `where` clause on `update` statements.** A bare `update public.settings set value = '...';` will overwrite *every* row. The Supabase SQL Editor warns you, but it's still easy to miss. Read each statement before you run it.
+See **[docs/OPERATIONS.md](docs/OPERATIONS.md)** for the full operations playbook — capacity changes, deadline tweaks, manual cancellations, monitoring routine, what to do when something breaks.
 
-- **Edit cutoff:** `update public.settings set value = '2026-05-08T23:59:59+12:00' where key = 'edit_cutoff_iso';`
+Quick reference:
+
+> ⚠️ **Always include a `where` clause on `update` statements.** A bare `update public.settings set value = '...';` will overwrite *every* row.
+
+- **Edit cutoff:** `update public.settings set value = '2026-05-09T23:59:59+12:00' where key = 'edit_cutoff_iso';`
 - **Add an admin:** `insert into public.admins (email) values ('someone@diocesan.school.nz');`
-- **Change capacity for one session:** `update public.sessions set capacity = 30 where workshop_id = 'rob-toolkit' and slot_id = 1;`
-- **Reset everything:** run `supabase/drop_all.sql` then `supabase/schema.sql`
+- **Change capacity:** `update public.sessions set capacity = 30 where workshop_id = 'rob-toolkit';`
+- **Wipe test data:** `delete from public.registrations;`
+- **Full reset:** run `supabase/drop_all.sql` then `supabase/schema.sql`
 
 ## Project structure
 
