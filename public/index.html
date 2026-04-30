@@ -121,6 +121,25 @@
   #my-picks li .pick-info strong { font-weight: 600; }
   #my-picks li .pick-info span { color: var(--muted); font-size: 12px; }
   #my-picks .empty { color: var(--muted); font-style: italic; padding: 8px 0; font-size: 13px; }
+  #picks-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  #picks-actions button {
+    background: var(--card);
+    color: var(--navy);
+    border: 1px solid var(--border);
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  #picks-actions button:hover { background: var(--blue-bg); border-color: var(--navy); }
 
   /* slot sections */
   .slot {
@@ -279,6 +298,10 @@
       </div>
       <div id="picks-status"></div>
       <ul id="picks-list"></ul>
+      <div id="picks-actions" hidden>
+        <button id="print-picks" type="button">🖨 Print my picks</button>
+        <button id="save-calendar" type="button">📅 Add to calendar</button>
+      </div>
     </div>
     <div id="grid"></div>
   </div>
@@ -521,6 +544,9 @@
     } else {
       picksStatus.innerHTML = '';
     }
+
+    // Toggle the print/calendar action buttons based on whether there's anything to print/save
+    document.getElementById('picks-actions').hidden = (myPicks.length === 0);
   }
 
   function formatCutoff() {
@@ -580,6 +606,159 @@
       card.style.opacity = '';
     }
   });
+
+  // ---- print + calendar export ----
+  // The TOD is on Friday 15 May 2026 NZST (UTC+12).
+  const TOD_DATE = '2026-05-15';
+
+  function buildPicksItinerary() {
+    return myPicks
+      .map(p => ({ ...p, w: workshopById(p.workshop_id), slot: slots.find(s => s.id === p.slot_id) }))
+      .sort((a, b) => a.slot_id - b.slot_id);
+  }
+
+  function printMyPicks() {
+    const items = buildPicksItinerary();
+    if (items.length === 0) return;
+    const name = session?.user?.user_metadata?.full_name
+              || session?.user?.user_metadata?.name
+              || session?.user?.email
+              || '';
+
+    const rows = items.map(p => `
+      <tr>
+        <td>${escapeHtml(p.slot.label.replace(/^Slot \d+: */, ''))}</td>
+        <td><strong>${escapeHtml(p.w.title)}</strong></td>
+        <td>${escapeHtml(p.w.presenter)}</td>
+        <td>${escapeHtml(p.w.room)}</td>
+      </tr>
+    `).join('');
+
+    const html = `<!DOCTYPE html><html lang="en-NZ"><head><meta charset="UTF-8">
+      <title>My TOD picks · ${escapeHtml(name)}</title>
+      <style>
+        @page { size: A4 portrait; margin: 1.8cm; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #1a1f2b; }
+        h1 { color: #1a3a6e; margin: 0 0 4px; font-size: 24px; }
+        .sub { color: #6b7585; margin: 0 0 28px; font-size: 14px; }
+        .name { font-size: 16px; margin: 0 0 24px; font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #d8dde6; font-size: 14px; vertical-align: top; }
+        th { background: #1a3a6e; color: white; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+        td:first-child { white-space: nowrap; color: #6b7585; }
+        .footer { margin-top: 32px; font-size: 12px; color: #6b7585; }
+      </style></head><body>
+      <h1>Your Teacher Only Day picks</h1>
+      <p class="sub">Friday 15 May 2026 · Diocesan School for Girls</p>
+      ${name ? `<p class="name">${escapeHtml(name)}</p>` : ''}
+      <table>
+        <thead><tr><th>Time</th><th>Workshop</th><th>Presenter</th><th>Room</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <p class="footer">Generated ${new Date().toLocaleString('en-NZ')}. You can swap picks at <strong>dio-tod-signup.vercel.app</strong> until ${formatCutoff()}.</p>
+      <script>window.onload = () => { window.print(); };<\/script>
+      </body></html>`;
+
+    const w = window.open('', '_blank');
+    if (!w) {
+      toast('Pop-up blocked. Allow pop-ups and try again.', 'error');
+      return;
+    }
+    w.document.write(html);
+    w.document.close();
+  }
+
+  // ICS / calendar export
+  function pad(n) { return String(n).padStart(2, '0'); }
+
+  function icsEscape(s) {
+    return String(s || '')
+      .replace(/\\/g, '\\\\')
+      .replace(/\n/g, '\\n')
+      .replace(/,/g, '\\,')
+      .replace(/;/g, '\\;');
+  }
+
+  function nowUtcStamp() {
+    const d = new Date();
+    return d.getUTCFullYear()
+      + pad(d.getUTCMonth() + 1)
+      + pad(d.getUTCDate()) + 'T'
+      + pad(d.getUTCHours())
+      + pad(d.getUTCMinutes())
+      + pad(d.getUTCSeconds()) + 'Z';
+  }
+
+  function localStamp(date, hhmm) {
+    return date.replace(/-/g, '') + 'T' + hhmm.replace(':', '') + '00';
+  }
+
+  function buildIcs() {
+    const items = buildPicksItinerary();
+    if (items.length === 0) return null;
+
+    const dtstamp = nowUtcStamp();
+    const lines = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//Dio TOD Signup//EN',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH',
+      // Minimal Pacific/Auckland VTIMEZONE for May (NZST = UTC+12, no DST)
+      'BEGIN:VTIMEZONE',
+      'TZID:Pacific/Auckland',
+      'BEGIN:STANDARD',
+      'DTSTART:19700405T030000',
+      'TZOFFSETFROM:+1300',
+      'TZOFFSETTO:+1200',
+      'TZNAME:NZST',
+      'RRULE:FREQ=YEARLY;BYMONTH=4;BYDAY=1SU',
+      'END:STANDARD',
+      'BEGIN:DAYLIGHT',
+      'DTSTART:19700927T020000',
+      'TZOFFSETFROM:+1200',
+      'TZOFFSETTO:+1300',
+      'TZNAME:NZDT',
+      'RRULE:FREQ=YEARLY;BYMONTH=9;BYDAY=-1SU',
+      'END:DAYLIGHT',
+      'END:VTIMEZONE',
+    ];
+
+    for (const p of items) {
+      const start = localStamp(TOD_DATE, p.slot.start_time);
+      const end   = localStamp(TOD_DATE, p.slot.end_time);
+      lines.push(
+        'BEGIN:VEVENT',
+        `UID:${p.session_id}@diocesan.school.nz`,
+        `DTSTAMP:${dtstamp}`,
+        `DTSTART;TZID=Pacific/Auckland:${start}`,
+        `DTEND;TZID=Pacific/Auckland:${end}`,
+        `SUMMARY:${icsEscape('TOD: ' + p.w.title)}`,
+        `LOCATION:${icsEscape('Room ' + p.w.room + ', Diocesan School for Girls')}`,
+        `DESCRIPTION:${icsEscape('Presenter: ' + p.w.presenter + '\nDio Teacher Only Day workshop.')}`,
+        'END:VEVENT'
+      );
+    }
+
+    lines.push('END:VCALENDAR');
+    return lines.join('\r\n');
+  }
+
+  function downloadIcs() {
+    const ics = buildIcs();
+    if (!ics) return;
+    const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'dio-tod-picks.ics';
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('Calendar file downloaded.', 'success');
+  }
+
+  document.getElementById('print-picks').addEventListener('click', printMyPicks);
+  document.getElementById('save-calendar').addEventListener('click', downloadIcs);
 
   // ---- polling for live seat counts ----
   function startPolling() {
