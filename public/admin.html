@@ -190,7 +190,7 @@
 <header>
   <h1>TOD Signup · Admin</h1>
   <div class="links">
-    <a href="index.html">← Signup view</a>
+    <a href="/">← Signup view</a>
     <span id="admin-email" style="font-size:13px;opacity:0.85"></span>
     <button id="signout-btn">Sign out</button>
   </div>
@@ -254,7 +254,7 @@
     const { data: { session } } = await SB.auth.getSession();
     if (!session) {
       // Not signed in — punt to signup page
-      location.href = 'index.html';
+      location.href = '/';
       return;
     }
 
@@ -467,7 +467,7 @@
   // Wire UI
   $('#signout-btn').addEventListener('click', async () => {
     await SB.auth.signOut();
-    location.href = 'index.html';
+    location.href = '/';
   });
   $('#refresh').addEventListener('click', main);
   $('#export-csv-by-slot').addEventListener('click', () => exportCSV('by-slot'));
