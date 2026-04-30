@@ -169,14 +169,12 @@
   }
   .ws[data-state="picked"] .ws-seats { background: var(--pick-border); color: white; }
   .ws[data-state="picked"] .ws-seats::before { content: "✓ "; }
-  .ws[data-state="picked"]::after {
-    content: "Your pick — click to cancel";
-    position: absolute;
-    top: 8px;
-    right: 12px;
+  .ws-cancel-hint {
     font-size: 11px;
     color: var(--navy);
     font-weight: 500;
+    font-style: italic;
+    margin-top: 2px;
   }
   .ws:focus-visible {
     outline: 3px solid var(--navy);
@@ -466,6 +464,7 @@
             <div class="ws-title">${escapeHtml(w.title)}</div>
             <div class="ws-meta">${escapeHtml(w.presenter)}</div>
             <div class="ws-room">Room ${escapeHtml(w.room)}</div>
+            ${isMine ? '<div class="ws-cancel-hint">Click to cancel</div>' : ''}
             ${reason ? `<div class="ws-disabled-reason">${escapeHtml(reason)}</div>` : ''}
             <div class="ws-seats">${seatLabel}</div>
           </div>

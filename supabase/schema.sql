@@ -72,11 +72,14 @@ create table if not exists public.admins (
 -- ---------------------------------------------------------------------
 
 insert into public.slots (id, start_time, end_time, label) values
-  (1, '08:30', '08:55', 'Slot 1 · 8:30–8:55'),
-  (2, '09:00', '09:25', 'Slot 2 · 9:00–9:25'),
-  (3, '09:30', '09:55', 'Slot 3 · 9:30–9:55'),
-  (4, '10:00', '10:25', 'Slot 4 · 10:00–10:25')
-on conflict (id) do nothing;
+  (1, '08:30', '08:55', 'Slot 1: 8:30 - 8:55'),
+  (2, '09:00', '09:25', 'Slot 2: 9:00 - 9:25'),
+  (3, '09:30', '09:55', 'Slot 3: 9:30 - 9:55'),
+  (4, '10:00', '10:25', 'Slot 4: 10:00 - 10:25')
+on conflict (id) do update set
+  start_time = excluded.start_time,
+  end_time   = excluded.end_time,
+  label      = excluded.label;
 
 insert into public.workshops (id, presenter, title, room, display_order) values
   ('rob-toolkit',     'Rob',         'Dio''s own Level 2 & 3 AI toolkit',           'C134',  1),
