@@ -1,0 +1,34 @@
+name: Keep Supabase Warm
+
+# Free Supabase projects pause after 7 days of inactivity. This workflow
+# pings the database once a day so it stays awake while registration is open.
+
+on:
+  schedule:
+    # 14:00 UTC = 02:00 NZST (NZDT in winter shifts to 01:00 UTC ≠ 13:00 UTC).
+    # Cadence is what matters; exact local time isn't critical.
+    - cron: '0 14 * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST API
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "::error::SUPABASE_URL or SUPABASE_ANON_KEY secret is not set."
+            exit 1
+          fi
+          response=$(curl -sS -o /dev/null -w "%{http_code}" \
+            "$SUPABASE_URL/rest/v1/slots?select=id&limit=1" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY")
+          echo "Ping response: $response"
+          if [ "$response" -ge 400 ]; then
+            echo "::error::Supabase returned HTTP $response"
+            exit 1
+          fi
