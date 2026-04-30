@@ -23,9 +23,11 @@ jobs:
             echo "::error::SUPABASE_URL or SUPABASE_ANON_KEY secret is not set."
             exit 1
           fi
-          # /auth/v1/health needs no auth and exercises Supabase's GoTrue + db
-          # connection — sufficient to count as activity for the pause timer.
-          health=$(curl -sS -o /dev/null -w "%{http_code}" "$SUPABASE_URL/auth/v1/health")
+          # /auth/v1/health needs the apikey header (it's not as "open" as it
+          # sounds). With apikey it returns 200 and exercises GoTrue + db.
+          health=$(curl -sS -o /dev/null -w "%{http_code}" \
+            "$SUPABASE_URL/auth/v1/health" \
+            -H "apikey: $SUPABASE_ANON_KEY")
           echo "Auth health: $health"
           if [ "$health" -ge 400 ]; then
             echo "::error::Supabase auth health returned HTTP $health"
