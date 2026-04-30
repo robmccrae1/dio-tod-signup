@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en-NZ">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TOD Signup · Attendance sheets</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='18' fill='%231a3a6e'/%3E%3Ctext x='50' y='68' text-anchor='middle' font-family='-apple-system,sans-serif' font-size='62' font-weight='700' fill='white'%3ED%3C/text%3E%3C/svg%3E">
+<style>
+  :root {
+    --navy: #1a3a6e;
+    --bg: #f6f7f9;
+    --card: #ffffff;
+    --border: #d8dde6;
+    --text: #1a1f2b;
+    --muted: #6b7585;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+  }
+
+  /* Screen-only navigation bar */
+  .toolbar {
+    background: var(--navy);
+    color: white;
+    padding: 14px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .toolbar h1 { margin: 0; font-size: 18px; font-weight: 600; }
+  .toolbar .links { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .toolbar a, .toolbar button {
+    background: rgba(255,255,255,0.15);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.3);
+    padding: 6px 12px;
+    border-radius: 4px;
+    text-decoration: none;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .toolbar a:hover, .toolbar button:hover { background: rgba(255,255,255,0.25); }
+
+  .controls {
+    background: white;
+    border-bottom: 1px solid var(--border);
+    padding: 12px 24px;
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    flex-wrap: wrap;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .controls .group { display: flex; gap: 0; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .controls .group button {
+    background: white;
+    color: var(--navy);
+    border: none;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  .controls .group button.active { background: var(--navy); color: white; }
+  .controls .print-btn {
+    background: var(--navy);
+    color: white;
+    border: none;
+    padding: 8px 18px;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    font-weight: 500;
+  }
+  .controls .meta { color: var(--muted); font-size: 13px; margin-left: auto; }
+
+  #content { padding: 24px; max-width: 900px; margin: 0 auto; }
+
+  /* A "sheet" — one printable page */
+  .sheet {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 28px 32px;
+    margin-bottom: 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+
+  .sheet-banner {
+    background: var(--navy);
+    color: white;
+    padding: 10px 16px;
+    margin: -28px -32px 20px;
+    border-radius: 4px 4px 0 0;
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+  }
+
+  .sheet-header {
+    margin-bottom: 16px;
+    border-bottom: 2px solid var(--navy);
+    padding-bottom: 12px;
+  }
+  .sheet-header h2 { margin: 0 0 4px; font-size: 22px; color: var(--navy); }
+  .sheet-header .meta { font-size: 14px; color: var(--text); }
+  .sheet-header .meta strong { font-weight: 600; }
+  .sheet-header .meta-row { display: flex; gap: 24px; flex-wrap: wrap; margin-top: 8px; }
+
+  .session-block {
+    margin-bottom: 24px;
+    page-break-inside: avoid;
+  }
+  .session-block + .session-block {
+    border-top: 1px solid var(--border);
+    padding-top: 18px;
+    margin-top: 24px;
+  }
+  .session-block-header {
+    background: #eef2f8;
+    padding: 8px 12px;
+    border-left: 4px solid var(--navy);
+    margin-bottom: 12px;
+    font-size: 14px;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .session-block-header strong { font-weight: 600; }
+
+  table.attendees {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  table.attendees th, table.attendees td {
+    text-align: left;
+    padding: 8px 10px;
+    border-bottom: 1px solid #e0e4ec;
+    font-size: 14px;
+  }
+  table.attendees th {
+    background: #f6f7f9;
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--muted);
+  }
+  table.attendees .col-num     { width: 32px; color: var(--muted); }
+  table.attendees .col-tick    { width: 32px; text-align: center; }
+  table.attendees .col-tick .box {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 1.5px solid var(--text);
+    border-radius: 2px;
+  }
+  table.attendees .empty-row td { color: var(--muted); font-style: italic; }
+  table.attendees .walkin td {
+    border-bottom: 1px dashed #c0c6d2;
+    height: 28px;
+  }
+  table.attendees .walkin td.col-name { color: var(--muted); font-style: italic; font-size: 12px; }
+
+  .empty-state {
+    color: var(--muted);
+    padding: 16px;
+    text-align: center;
+    font-style: italic;
+    background: #fafbfc;
+    border-radius: 4px;
+  }
+
+  #loading, #not-admin {
+    text-align: center;
+    padding: 80px;
+    color: var(--muted);
+  }
+  #not-admin { color: #b3261e; }
+
+  /* PRINT */
+  @page {
+    size: A4 portrait;
+    margin: 1.5cm;
+  }
+  @media print {
+    body { background: white; }
+    .no-print { display: none !important; }
+    #content { padding: 0; max-width: none; margin: 0; }
+    .sheet {
+      box-shadow: none;
+      border: none;
+      padding: 0;
+      margin: 0 0 0 0;
+      page-break-after: always;
+      page-break-inside: avoid;
+    }
+    .sheet:last-child { page-break-after: auto; }
+    .sheet-banner {
+      background: white !important;
+      color: var(--navy) !important;
+      margin: 0 0 12px 0;
+      padding: 0;
+      border-bottom: 2px solid var(--navy);
+      font-size: 11px;
+      border-radius: 0;
+    }
+    .sheet-header h2 { font-size: 20px; }
+    .sheet-header { border-bottom: 2px solid black; }
+    .session-block-header {
+      background: white !important;
+      border-left: 3px solid black;
+      padding: 4px 8px;
+    }
+    table.attendees th { background: white !important; }
+    table.attendees .col-tick .box { border-color: black; }
+  }
+</style>
+</head>
+<body>
+
+<div class="toolbar no-print">
+  <h1>TOD Attendance sheets</h1>
+  <div class="links">
+    <a href="/admin">← Admin</a>
+    <a href="/">← Signup</a>
+    <span id="admin-email" style="font-size:13px;opacity:0.85"></span>
+  </div>
+</div>
+
+<div class="controls no-print" id="controls" hidden>
+  <div class="group">
+    <button id="mode-session" class="active">By session (40 pages)</button>
+    <button id="mode-presenter">By presenter (10 pages)</button>
+  </div>
+  <button id="refresh">↻ Refresh data</button>
+  <button id="print" class="print-btn">⎙ Print / Save as PDF</button>
+  <span class="meta">Loaded: <span id="loaded-at"></span></span>
+</div>
+
+<div id="loading">Loading…</div>
+<div id="not-admin" hidden>
+  <h2>Not authorised</h2>
+  <p>Only admins can view attendance sheets.</p>
+</div>
+
+<div id="content"></div>
+
+<script src="config.js"></script>
+<script type="module">
+  import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
+
+  const SB = createClient(
+    window.SUPABASE_CONFIG.url,
+    window.SUPABASE_CONFIG.publishableKey,
+    { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }
+  );
+
+  const $ = (s) => document.querySelector(s);
+  let workshops = [];
+  let slots = [];
+  let registrations = [];
+  let mode = 'session';
+
+  function escapeHtml(s) {
+    if (s == null) return '';
+    return String(s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+  }
+
+  function sortKey(r) {
+    const name = (r.user_name || '').trim();
+    const email = (r.user_email || '').toLowerCase();
+    return name ? name.toLowerCase() + '|' + email : email;
+  }
+
+  async function load() {
+    const { data: { session } } = await SB.auth.getSession();
+    if (!session) {
+      location.href = '/';
+      return;
+    }
+    $('#admin-email').textContent = session.user.email;
+
+    const [workshopsR, slotsR, regsR] = await Promise.all([
+      SB.from('workshops').select('*').order('display_order'),
+      SB.from('slots').select('*').order('id'),
+      SB.rpc('admin_get_all_registrations'),
+    ]);
+
+    if (regsR.error) {
+      if (regsR.error.message?.includes('forbidden') || regsR.error.code === 'P0001') {
+        $('#loading').hidden = true;
+        $('#not-admin').hidden = false;
+        return;
+      }
+      $('#loading').textContent = 'Error: ' + (regsR.error.message || regsR.error);
+      return;
+    }
+
+    workshops = workshopsR.data;
+    slots = slotsR.data;
+    registrations = regsR.data;
+
+    $('#loading').hidden = true;
+    $('#controls').hidden = false;
+    render();
+  }
+
+  function render() {
+    $('#loaded-at').textContent = new Date().toLocaleString('en-NZ');
+    if (mode === 'session') renderBySession();
+    else renderByPresenter();
+  }
+
+  // Group registrations by (slot_id, workshop_id)
+  function regsForSession(slotId, workshopId) {
+    return registrations
+      .filter(r => r.slot_id === slotId && r.workshop_id === workshopId)
+      .sort((a, b) => sortKey(a).localeCompare(sortKey(b)));
+  }
+
+  // Render the attendee list for one session
+  function renderAttendeeTable(attendees, capacity, walkinRows = 3) {
+    const rows = [];
+    if (attendees.length === 0) {
+      rows.push('<tr class="empty-row"><td></td><td>No registrations</td><td></td></tr>');
+    } else {
+      attendees.forEach((r, i) => {
+        rows.push(`
+          <tr>
+            <td class="col-num">${i + 1}</td>
+            <td class="col-name">${escapeHtml(r.user_name || r.user_email)}</td>
+            <td class="col-tick"><span class="box"></span></td>
+          </tr>
+        `);
+      });
+    }
+    // Add a few walk-in rows at the bottom (label first one)
+    for (let i = 0; i < walkinRows; i++) {
+      rows.push(`
+        <tr class="walkin">
+          <td class="col-num">${attendees.length + i + 1}</td>
+          <td class="col-name">${i === 0 ? 'walk-in:' : ''}</td>
+          <td class="col-tick"><span class="box"></span></td>
+        </tr>
+      `);
+    }
+    return `
+      <table class="attendees">
+        <thead>
+          <tr>
+            <th class="col-num">#</th>
+            <th>Name</th>
+            <th class="col-tick">Here</th>
+          </tr>
+        </thead>
+        <tbody>${rows.join('')}</tbody>
+      </table>
+    `;
+  }
+
+  function renderBySession() {
+    // 40 sheets, ordered by slot then by workshop display_order.
+    const sheets = [];
+    for (const slot of slots) {
+      for (const w of workshops) {
+        const attendees = regsForSession(slot.id, w.id);
+        sheets.push(`
+          <div class="sheet">
+            <div class="sheet-banner">DIO TOD · ${escapeHtml(slot.label)}</div>
+            <div class="sheet-header">
+              <h2>${escapeHtml(w.title)}</h2>
+              <div class="meta-row">
+                <span><strong>Presenter:</strong> ${escapeHtml(w.presenter)}</span>
+                <span><strong>Room:</strong> ${escapeHtml(w.room)}</span>
+                <span><strong>Time:</strong> ${escapeHtml(slot.start_time)} – ${escapeHtml(slot.end_time)}</span>
+                <span><strong>Registered:</strong> ${attendees.length} of 25</span>
+              </div>
+            </div>
+            ${renderAttendeeTable(attendees, 25, 3)}
+          </div>
+        `);
+      }
+    }
+    $('#content').innerHTML = sheets.join('');
+  }
+
+  function renderByPresenter() {
+    // 10 sheets, one per presenter, each with 4 stacked session blocks.
+    const sheets = workshops.map(w => {
+      const blocks = slots.map(slot => {
+        const attendees = regsForSession(slot.id, w.id);
+        return `
+          <div class="session-block">
+            <div class="session-block-header">
+              <span><strong>${escapeHtml(slot.label)}</strong> · Room ${escapeHtml(w.room)}</span>
+              <span><strong>${attendees.length}</strong> of 25 registered</span>
+            </div>
+            ${renderAttendeeTable(attendees, 25, 2)}
+          </div>
+        `;
+      }).join('');
+
+      return `
+        <div class="sheet">
+          <div class="sheet-banner">DIO TOD · ${escapeHtml(w.presenter)}'s rosters</div>
+          <div class="sheet-header">
+            <h2>${escapeHtml(w.title)}</h2>
+            <div class="meta-row">
+              <span><strong>Presenter:</strong> ${escapeHtml(w.presenter)}</span>
+              <span><strong>Room:</strong> ${escapeHtml(w.room)}</span>
+              <span><strong>4 sessions</strong> · 8:30 – 10:25</span>
+            </div>
+          </div>
+          ${blocks}
+        </div>
+      `;
+    });
+    $('#content').innerHTML = sheets.join('');
+  }
+
+  // Wire UI
+  $('#mode-session').addEventListener('click', () => {
+    mode = 'session';
+    $('#mode-session').classList.add('active');
+    $('#mode-presenter').classList.remove('active');
+    render();
+  });
+  $('#mode-presenter').addEventListener('click', () => {
+    mode = 'presenter';
+    $('#mode-presenter').classList.add('active');
+    $('#mode-session').classList.remove('active');
+    render();
+  });
+  $('#refresh').addEventListener('click', load);
+  $('#print').addEventListener('click', () => window.print());
+
+  load();
+</script>
+
+</body>
+</html>
