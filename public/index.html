@@ -588,6 +588,13 @@
 
   // ---- main ----
   async function main() {
+    // detectSessionInUrl is async — if we just bounced back from OAuth, the
+    // URL still has the access_token hash and Supabase is mid-processing.
+    // Wait briefly so getSession() returns the freshly-minted session.
+    if (window.location.hash.includes('access_token') ||
+        window.location.hash.includes('error')) {
+      await new Promise(r => setTimeout(r, 400));
+    }
     session = await getSession();
     if (!session) {
       loadingEl.hidden = true;
@@ -622,9 +629,12 @@
     }
   }
 
-  // React to OAuth redirect on first load
-  SB.auth.onAuthStateChange((event, sess) => {
-    if (event === 'SIGNED_IN' && !session) location.reload();
+  // Auth state changes after first load (manual sign-out from elsewhere etc.)
+  // We deliberately do NOT reload on SIGNED_IN here — the OAuth callback fires
+  // this listener before main()'s `await getSession()` resolves, and reloading
+  // creates an infinite loop because each reload re-triggers the same race.
+  SB.auth.onAuthStateChange((event) => {
+    if (event === 'SIGNED_OUT') location.reload();
   });
 
   main();
