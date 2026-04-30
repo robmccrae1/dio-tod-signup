@@ -200,7 +200,7 @@
   <div id="loading">Loading…</div>
   <div id="not-admin" hidden>
     <h2>Not authorised</h2>
-    <p>You're signed in but you're not in the admin list. Talk to the IT Director.</p>
+    <p>You're signed in but your account isn't in the admin list. Contact the site administrator if you should have access.</p>
   </div>
 
   <div id="content" hidden>
@@ -213,7 +213,8 @@
         <button id="view-table">Table view</button>
       </div>
       <button id="refresh">↻ Refresh</button>
-      <button id="export-csv" class="secondary">⬇ Export CSV</button>
+      <button id="export-csv-by-slot" class="secondary">⬇ CSV by slot</button>
+      <button id="export-csv-by-staff" class="secondary">⬇ CSV by staff</button>
     </div>
 
     <div id="grid-view"></div>
@@ -379,8 +380,7 @@
       .filter(r => !q
         || (r.user_email || '').toLowerCase().includes(q)
         || (r.user_name || '').toLowerCase().includes(q))
-      .sort((a, b) => (a.user_name || a.user_email).localeCompare(b.user_name || b.user_email)
-                  || a.slot_id - b.slot_id);
+      .sort((a, b) => sortKey(a).localeCompare(sortKey(b)) || a.slot_id - b.slot_id);
 
     if (rows.length === 0) {
       $('#table-view').innerHTML = '<p>No registrations match.</p>';
@@ -417,12 +417,31 @@
     `;
   }
 
-  function exportCSV() {
+  // Stable sort key for a registration row — falls back through email to never
+  // hit null and avoids the "name on row A, email on row B" inconsistency.
+  function sortKey(r) {
+    const name = (r.user_name || '').trim();
+    const email = (r.user_email || '').toLowerCase();
+    return name ? name.toLowerCase() + '|' + email : email;
+  }
+
+  function exportCSV(mode) {
     const headers = ['Name', 'Email', 'Slot', 'Start time', 'Workshop', 'Presenter', 'Room', 'Registered at'];
-    const rows = [...registrations].sort((a, b) =>
-      a.slot_id - b.slot_id
-      || (a.user_name || a.user_email).localeCompare(b.user_name || b.user_email)
-    );
+    const rows = [...registrations];
+    if (mode === 'by-staff') {
+      rows.sort((a, b) =>
+        sortKey(a).localeCompare(sortKey(b))
+        || a.slot_id - b.slot_id
+      );
+    } else {
+      // by-slot (default): order by slot, then workshop display order, then name
+      rows.sort((a, b) =>
+        a.slot_id - b.slot_id
+        || (workshops.find(w => w.id === a.workshop_id)?.display_order || 0)
+         - (workshops.find(w => w.id === b.workshop_id)?.display_order || 0)
+        || sortKey(a).localeCompare(sortKey(b))
+      );
+    }
     const escape = (v) => {
       const s = (v == null) ? '' : String(v);
       return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
@@ -440,7 +459,7 @@
     const a = document.createElement('a');
     const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
     a.href = url;
-    a.download = `tod-registrations-${stamp}.csv`;
+    a.download = `tod-registrations-${mode}-${stamp}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -451,7 +470,8 @@
     location.href = 'index.html';
   });
   $('#refresh').addEventListener('click', main);
-  $('#export-csv').addEventListener('click', exportCSV);
+  $('#export-csv-by-slot').addEventListener('click', () => exportCSV('by-slot'));
+  $('#export-csv-by-staff').addEventListener('click', () => exportCSV('by-staff'));
   $('#search').addEventListener('input', (e) => {
     searchTerm = e.target.value.trim();
     render();

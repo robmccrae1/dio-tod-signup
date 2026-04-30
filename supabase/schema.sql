@@ -167,6 +167,13 @@ begin
     return json_build_object('ok', false, 'error', 'wrong_domain');
   end if;
 
+  -- Belt-and-braces: only verified email addresses can register. Google OAuth
+  -- always returns email_verified=true; this guards a future config drift
+  -- (e.g. if Rob ever flips OAuth consent to "External").
+  if coalesce((auth.jwt()->>'email_verified')::boolean, false) is not true then
+    return json_build_object('ok', false, 'error', 'email_not_verified');
+  end if;
+
   select value::timestamptz into v_cutoff from public.settings where key = 'edit_cutoff_iso';
   if now() >= v_cutoff then
     return json_build_object('ok', false, 'error', 'editing_closed');
@@ -385,11 +392,14 @@ create policy "users see own regs" on public.registrations
 -- DELETEs go through unregister_from_session() RPC (which enforces cutoff).
 -- We do NOT add a generic delete policy — the RPC is the only path.
 
--- Admins table is admin-readable only
+-- Admins table: never read from the client directly. The admin_get_all_registrations
+-- RPC reads it via SECURITY DEFINER, which bypasses RLS, so no SELECT policy is needed.
+-- A recursive policy here (e.g. "user is admin if user is in admins") would cause
+-- Postgres to throw "infinite recursion detected in policy".
 drop policy if exists "admins read admins" on public.admins;
 create policy "admins read admins" on public.admins
   for select to authenticated
-  using (auth.jwt()->>'email' in (select email from public.admins));
+  using (false);
 
 
 -- ---------------------------------------------------------------------

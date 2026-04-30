@@ -14,7 +14,7 @@ jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Supabase REST API
+      - name: Ping Supabase Auth health
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
@@ -23,12 +23,27 @@ jobs:
             echo "::error::SUPABASE_URL or SUPABASE_ANON_KEY secret is not set."
             exit 1
           fi
-          response=$(curl -sS -o /dev/null -w "%{http_code}" \
-            "$SUPABASE_URL/rest/v1/slots?select=id&limit=1" \
+          # /auth/v1/health needs no auth and exercises Supabase's GoTrue + db
+          # connection — sufficient to count as activity for the pause timer.
+          health=$(curl -sS -o /dev/null -w "%{http_code}" "$SUPABASE_URL/auth/v1/health")
+          echo "Auth health: $health"
+          if [ "$health" -ge 400 ]; then
+            echo "::error::Supabase auth health returned HTTP $health"
+            exit 1
+          fi
+          # Also exercise PostgREST + RPC, which is the path the app actually uses.
+          # get_session_seats is grant-execute to authenticated, so we send the
+          # anon key as a Bearer token (Supabase treats this as anon role + jwt).
+          rpc=$(curl -sS -o /dev/null -w "%{http_code}" \
+            "$SUPABASE_URL/rest/v1/rpc/get_session_seats" \
             -H "apikey: $SUPABASE_ANON_KEY" \
-            -H "Authorization: Bearer $SUPABASE_ANON_KEY")
-          echo "Ping response: $response"
-          if [ "$response" -ge 400 ]; then
-            echo "::error::Supabase returned HTTP $response"
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{}')
+          echo "RPC ping: $rpc"
+          # We expect 401 (anon can't call this RPC) or 200; both prove the DB
+          # is awake. We only fail on 5xx or 0 (network).
+          if [ "$rpc" -ge 500 ] || [ "$rpc" -eq 0 ]; then
+            echo "::error::Supabase RPC ping returned HTTP $rpc"
             exit 1
           fi

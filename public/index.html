@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dio Teacher Only Day · Workshop Signup</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='18' fill='%231a3a6e'/%3E%3Ctext x='50' y='68' text-anchor='middle' font-family='-apple-system,sans-serif' font-size='62' font-weight='700' fill='white'%3ED%3C/text%3E%3C/svg%3E">
 <style>
   :root {
     --navy: #1a3a6e;
@@ -167,14 +168,19 @@
     padding-left: 10px;
   }
   .ws[data-state="picked"] .ws-seats { background: var(--pick-border); color: white; }
+  .ws[data-state="picked"] .ws-seats::before { content: "✓ "; }
   .ws[data-state="picked"]::after {
-    content: "✓ Your pick — click to cancel";
+    content: "Your pick — click to cancel";
     position: absolute;
     top: 8px;
     right: 12px;
     font-size: 11px;
     color: var(--navy);
     font-weight: 500;
+  }
+  .ws:focus-visible {
+    outline: 3px solid var(--navy);
+    outline-offset: -3px;
   }
   .ws[data-disabled="true"] {
     cursor: not-allowed;
@@ -232,6 +238,8 @@
     header h1 { font-size: 16px; }
     .workshops { grid-template-columns: 1fr; }
     main { padding: 12px 8px 40px; }
+    /* Don't hog the screen with the picks panel on phones */
+    #my-picks { position: static; }
   }
 </style>
 </head>
@@ -349,18 +357,25 @@
   // ---- data loading ----
   async function loadStatic() {
     // Workshops + slots are tiny and never change during the event window.
-    const [{ data: w, error: we }, { data: sl, error: se }, { data: cfg, error: ce }] = await Promise.all([
+    const [{ data: w, error: we }, { data: sl, error: se }] = await Promise.all([
       SB.from('workshops').select('*').order('display_order'),
       SB.from('slots').select('*').order('id'),
-      SB.from('settings').select('*'),
     ]);
-    if (we || se || ce) {
-      console.error(we, se, ce);
+    if (we || se) {
+      console.error(we, se);
       throw new Error('Could not load schema. Try refreshing.');
     }
     workshops = w;
     slots = sl;
-    const cutoffRow = (cfg || []).find(r => r.key === 'edit_cutoff_iso');
+    await loadSettings();
+  }
+
+  async function loadSettings() {
+    // Re-fetched on every poll so a cutoff change in the DB takes effect on
+    // open pages without a refresh.
+    const { data, error } = await SB.from('settings').select('*');
+    if (error) { console.error(error); return; }
+    const cutoffRow = (data || []).find(r => r.key === 'edit_cutoff_iso');
     editCutoff = cutoffRow ? new Date(cutoffRow.value) : null;
   }
 
@@ -435,8 +450,14 @@
           ? 'Booked'
           : (seats === 0 ? 'Full' : `${seats} seat${seats === 1 ? '' : 's'} left`);
 
+        const ariaLabel = `${w.title}, presented by ${w.presenter} in room ${w.room}, ${seatLabel}${isMine ? ' — you are registered' : (disabled && reason ? ` — disabled: ${reason}` : '')}`;
         return `
           <div class="ws"
+               role="button"
+               tabindex="${disabled ? -1 : 0}"
+               aria-pressed="${isMine}"
+               aria-disabled="${disabled}"
+               aria-label="${escapeHtml(ariaLabel)}"
                data-state="${state}"
                data-disabled="${disabled}"
                data-session-id="${item.session_id}"
@@ -509,6 +530,15 @@
       .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
   }
 
+  // ---- keyboard activation ----
+  gridEl.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const card = e.target.closest('.ws');
+    if (!card) return;
+    e.preventDefault();
+    card.click();
+  });
+
   // ---- click handler ----
   gridEl.addEventListener('click', async (e) => {
     const card = e.target.closest('.ws');
@@ -548,8 +578,9 @@
     if (pollHandle) clearInterval(pollHandle);
     pollHandle = setInterval(async () => {
       try {
-        await loadSeats();
-        // Don't reload my picks during poll — they only change on user action.
+        // Pull seats AND settings — settings catch a cutoff change made via
+        // SQL on a running page (e.g. Rob extends the deadline).
+        await Promise.all([loadSeats(), loadSettings()]);
         render();
       } catch (e) { /* ignore transient */ }
     }, 10_000);

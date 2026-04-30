@@ -66,7 +66,7 @@ The workflow at `.github/workflows/keep-warm.yml` runs daily at 02:00 NZT.
 
 ## Running locally
 
-It's a static site. Open `public/index.html` in a browser, or:
+It's a static site. Run a local server from the `public` folder:
 
 ```bash
 cd public
@@ -74,11 +74,24 @@ python3 -m http.server 8080
 # then visit http://localhost:8080
 ```
 
-For local dev to work with Google OAuth, you'll need to add `http://localhost:8080` to:
-- Google OAuth credentials → Authorized redirect URIs (add `https://fnbkuirtpwjockendkqu.supabase.co/auth/v1/callback` is enough — Supabase handles the redirect back)
-- Supabase → Auth → URL Configuration → Additional redirect URLs
+For Google OAuth to work locally, two URLs need to be allowed:
+
+1. **In Supabase → Authentication → URL Configuration → Redirect URLs**, add:
+   ```
+   http://localhost:8080/**
+   ```
+   (Already done in Step 5 of the setup checklist — confirm it's there.)
+
+2. **In Google Cloud Console → Credentials → your OAuth client → Authorised redirect URIs**:
+   The only URI you ever need here is the Supabase callback:
+   ```
+   https://fnbkuirtpwjockendkqu.supabase.co/auth/v1/callback
+   ```
+   Don't add `localhost` here — Supabase handles the bounce back to your site URL.
 
 ## Editing the data
+
+> ⚠️ **Always include a `where` clause on `update` statements.** A bare `update public.settings set value = '...';` will overwrite *every* row. The Supabase SQL Editor warns you, but it's still easy to miss. Read each statement before you run it.
 
 - **Edit cutoff:** `update public.settings set value = '2026-05-08T23:59:59+12:00' where key = 'edit_cutoff_iso';`
 - **Add an admin:** `insert into public.admins (email) values ('someone@diocesan.school.nz');`
