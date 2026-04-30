@@ -1,23 +1,603 @@
 <!DOCTYPE html>
 <html lang="en-NZ">
 <head>
-  <meta charset="UTF-8">
-  <title>Dio TOD Signup — coming soon</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      max-width: 600px;
-      margin: 80px auto;
-      padding: 20px;
-      color: #222;
-      line-height: 1.6;
-    }
-    h1 { color: #1a3a6e; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dio Teacher Only Day · Workshop Signup</title>
+<style>
+  :root {
+    --navy: #1a3a6e;
+    --navy-dark: #122a52;
+    --bg: #f6f7f9;
+    --card: #ffffff;
+    --border: #d8dde6;
+    --text: #1a1f2b;
+    --muted: #6b7585;
+    --green: #197d4a;
+    --green-bg: #e6f4ec;
+    --amber: #b8721a;
+    --amber-bg: #fdf2e0;
+    --red: #b3261e;
+    --red-bg: #fdecea;
+    --blue-bg: #e7eef9;
+    --pick-border: #1a3a6e;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+  }
+  header {
+    background: var(--navy);
+    color: white;
+    padding: 16px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  header h1 { margin: 0; font-size: 20px; font-weight: 600; }
+  header .user-bar { font-size: 14px; display: flex; align-items: center; gap: 12px; }
+  header .user-bar button {
+    background: rgba(255,255,255,0.15);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.3);
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  header .user-bar button:hover { background: rgba(255,255,255,0.25); }
+
+  main { max-width: 1200px; margin: 0 auto; padding: 20px 16px 60px; }
+
+  /* signed-out view */
+  #signin-view { text-align: center; padding: 80px 20px; }
+  #signin-view p { color: var(--muted); max-width: 480px; margin: 0 auto 24px; }
+  #google-signin {
+    background: white;
+    border: 1px solid var(--border);
+    padding: 12px 24px;
+    font-size: 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+  }
+  #google-signin:hover { background: #fafafa; }
+  #google-signin svg { width: 20px; height: 20px; }
+
+  /* my-picks panel */
+  #my-picks {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 24px;
+    position: sticky;
+    top: 12px;
+    z-index: 10;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+  }
+  #my-picks .picks-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  #my-picks h2 { margin: 0; font-size: 16px; font-weight: 600; }
+  #my-picks .count-badge {
+    background: var(--blue-bg);
+    color: var(--navy);
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  #my-picks .nudge { color: var(--amber); font-size: 13px; margin-top: 4px; }
+  #my-picks .complete { color: var(--green); font-size: 13px; margin-top: 4px; font-weight: 500; }
+  #my-picks ul { list-style: none; padding: 0; margin: 12px 0 0; }
+  #my-picks li {
+    padding: 8px 0;
+    border-top: 1px solid var(--border);
+    font-size: 14px;
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  #my-picks li:first-child { border-top: none; }
+  #my-picks li .pick-info { display: flex; flex-direction: column; }
+  #my-picks li .pick-info strong { font-weight: 600; }
+  #my-picks li .pick-info span { color: var(--muted); font-size: 12px; }
+  #my-picks .empty { color: var(--muted); font-style: italic; padding: 8px 0; font-size: 13px; }
+
+  /* slot sections */
+  .slot {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+  .slot-header {
+    background: var(--navy);
+    color: white;
+    padding: 10px 16px;
+    font-weight: 600;
+    font-size: 15px;
+  }
+  .workshops {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1px;
+    background: var(--border);
+  }
+  .workshops > * { background: var(--card); }
+
+  /* workshop card */
+  .ws {
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: background 0.1s;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-height: 110px;
+    position: relative;
+  }
+  .ws:hover { background: #f4f6fa; }
+  .ws .ws-title { font-weight: 600; font-size: 14px; line-height: 1.3; }
+  .ws .ws-meta { font-size: 12px; color: var(--muted); }
+  .ws .ws-room { font-size: 11px; color: var(--muted); font-weight: 500; }
+  .ws .ws-seats {
+    margin-top: auto;
+    font-size: 12px;
+    font-weight: 600;
+    align-self: flex-start;
+    padding: 3px 8px;
+    border-radius: 4px;
+  }
+  .ws[data-state="available"] .ws-seats { background: var(--green-bg); color: var(--green); }
+  .ws[data-state="filling"] .ws-seats   { background: var(--amber-bg); color: var(--amber); }
+  .ws[data-state="full"] .ws-seats      { background: var(--red-bg); color: var(--red); }
+  .ws[data-state="picked"] {
+    background: var(--blue-bg);
+    border-left: 4px solid var(--pick-border);
+    padding-left: 10px;
+  }
+  .ws[data-state="picked"] .ws-seats { background: var(--pick-border); color: white; }
+  .ws[data-state="picked"]::after {
+    content: "✓ Your pick — click to cancel";
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    font-size: 11px;
+    color: var(--navy);
+    font-weight: 500;
+  }
+  .ws[data-disabled="true"] {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+  .ws[data-disabled="true"]:hover { background: var(--card); }
+  .ws[data-disabled="true"] .ws-disabled-reason {
+    font-size: 11px;
+    color: var(--muted);
+    font-style: italic;
+    margin-top: 2px;
+  }
+
+  /* toast */
+  #toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 10px 20px;
+    background: var(--text);
+    color: white;
+    border-radius: 6px;
+    font-size: 14px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    z-index: 100;
+    max-width: 90vw;
+  }
+  #toast.show { opacity: 1; }
+  #toast.error { background: var(--red); }
+  #toast.success { background: var(--green); }
+
+  /* loading */
+  #loading {
+    text-align: center;
+    padding: 80px;
+    color: var(--muted);
+  }
+
+  /* closed view */
+  #closed-view {
+    background: var(--amber-bg);
+    border: 1px solid var(--amber);
+    padding: 16px 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    color: var(--amber);
+  }
+
+  /* mobile */
+  @media (max-width: 600px) {
+    header h1 { font-size: 16px; }
+    .workshops { grid-template-columns: 1fr; }
+    main { padding: 12px 8px 40px; }
+  }
+</style>
 </head>
 <body>
-  <h1>Dio TOD Signup</h1>
-  <p>Frontend coming online shortly. If you're seeing this, the deploy is working.</p>
+
+<header>
+  <h1>Dio Teacher Only Day · Workshop Signup</h1>
+  <div class="user-bar" id="user-bar"></div>
+</header>
+
+<main id="app">
+  <div id="loading">Loading…</div>
+
+  <div id="signin-view" hidden>
+    <h2 style="margin-top:0">Welcome</h2>
+    <p>Sign in with your Dio Google account to register for up to 4 of the 10 workshops on offer. One workshop per time slot, no doubling up.</p>
+    <button id="google-signin">
+      <svg viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962L3.964 7.294C4.672 5.167 6.656 3.58 9 3.58z"/></svg>
+      Sign in with Google
+    </button>
+    <p style="margin-top:32px;font-size:13px">Only <code>@diocesan.school.nz</code> accounts can sign in.</p>
+  </div>
+
+  <div id="signup-view" hidden>
+    <div id="closed-view" hidden></div>
+    <div id="my-picks">
+      <div class="picks-header">
+        <h2>Your picks</h2>
+        <span class="count-badge" id="picks-count">0 of 4</span>
+      </div>
+      <div id="picks-status"></div>
+      <ul id="picks-list"></ul>
+    </div>
+    <div id="grid"></div>
+  </div>
+</main>
+
+<div id="toast"></div>
+
+<script src="config.js"></script>
+<script type="module">
+  import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
+
+  const SB = createClient(
+    window.SUPABASE_CONFIG.url,
+    window.SUPABASE_CONFIG.publishableKey,
+    { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }
+  );
+
+  // ---- DOM ----
+  const $ = (s) => document.querySelector(s);
+  const loadingEl = $('#loading');
+  const signinView = $('#signin-view');
+  const signupView = $('#signup-view');
+  const userBar = $('#user-bar');
+  const gridEl = $('#grid');
+  const picksList = $('#picks-list');
+  const picksCount = $('#picks-count');
+  const picksStatus = $('#picks-status');
+  const closedView = $('#closed-view');
+  const toastEl = $('#toast');
+
+  // ---- state ----
+  let session = null;
+  let workshops = [];   // [{id, presenter, title, room, display_order}]
+  let slots = [];       // [{id, label, start_time, end_time}]
+  let sessionsBySlot = {}; // slot_id -> [{session_id, workshop_id, slot_id, capacity, taken, available}]
+  let myPicks = [];     // [{session_id, workshop_id, slot_id}]
+  let editCutoff = null;
+  let pollHandle = null;
+  let pendingClicks = new Set(); // session_ids currently being toggled
+
+  // ---- toast ----
+  function toast(msg, kind = 'info') {
+    toastEl.textContent = msg;
+    toastEl.className = 'show ' + kind;
+    setTimeout(() => { toastEl.className = ''; }, 3500);
+  }
+
+  // ---- error → message ----
+  const ERR_MSG = {
+    not_authenticated:        'Please sign in again.',
+    wrong_domain:             'Only @diocesan.school.nz accounts can register.',
+    editing_closed:           'Registration is closed.',
+    session_not_found:        'That session no longer exists.',
+    session_full:             'Sorry — that session just filled up.',
+    max_picks_reached:        'You\'ve already picked 4 sessions. Cancel one first if you want to swap.',
+    workshop_already_picked:  'You\'ve already signed up for that workshop in another slot.',
+    slot_already_filled:      'You\'re already booked into another workshop in that slot. Cancel that one first.',
+    not_registered:           'You\'re not registered for that session.',
+  };
+  function explainError(code) { return ERR_MSG[code] || ('Error: ' + code); }
+
+  // ---- auth ----
+  async function getSession() {
+    const { data: { session: s } } = await SB.auth.getSession();
+    return s;
+  }
+  async function signIn() {
+    const { error } = await SB.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin,
+        queryParams: { hd: 'diocesan.school.nz' }, // hint: only show Dio accounts
+      },
+    });
+    if (error) toast(error.message, 'error');
+  }
+  async function signOut() {
+    await SB.auth.signOut();
+    location.reload();
+  }
+  $('#google-signin').addEventListener('click', signIn);
+
+  // ---- data loading ----
+  async function loadStatic() {
+    // Workshops + slots are tiny and never change during the event window.
+    const [{ data: w, error: we }, { data: sl, error: se }, { data: cfg, error: ce }] = await Promise.all([
+      SB.from('workshops').select('*').order('display_order'),
+      SB.from('slots').select('*').order('id'),
+      SB.from('settings').select('*'),
+    ]);
+    if (we || se || ce) {
+      console.error(we, se, ce);
+      throw new Error('Could not load schema. Try refreshing.');
+    }
+    workshops = w;
+    slots = sl;
+    const cutoffRow = (cfg || []).find(r => r.key === 'edit_cutoff_iso');
+    editCutoff = cutoffRow ? new Date(cutoffRow.value) : null;
+  }
+
+  async function loadSeats() {
+    const { data, error } = await SB.rpc('get_session_seats');
+    if (error) { console.error(error); throw error; }
+    sessionsBySlot = {};
+    for (const row of data) {
+      (sessionsBySlot[row.slot_id] ||= []).push(row);
+    }
+  }
+
+  async function loadMyPicks() {
+    const { data, error } = await SB.from('registrations')
+      .select('session_id, sessions!inner(workshop_id, slot_id)')
+      .order('created_at');
+    if (error) { console.error(error); throw error; }
+    myPicks = (data || []).map(r => ({
+      session_id: r.session_id,
+      workshop_id: r.sessions.workshop_id,
+      slot_id: r.sessions.slot_id,
+    }));
+  }
+
+  // ---- rendering ----
+  function workshopById(id) { return workshops.find(w => w.id === id); }
+  function isPickedSession(sessionId) { return myPicks.some(p => p.session_id === sessionId); }
+  function pickedWorkshopIds() { return new Set(myPicks.map(p => p.workshop_id)); }
+  function pickedSlotIds() { return new Set(myPicks.map(p => p.slot_id)); }
+
+  function isClosed() { return editCutoff && new Date() >= editCutoff; }
+
+  function render() {
+    if (isClosed()) {
+      closedView.hidden = false;
+      closedView.innerHTML = '<strong>Registration is closed.</strong> The grid is read-only. Your picks are below.';
+    }
+
+    // Grid
+    const html = slots.map(slot => {
+      const items = sessionsBySlot[slot.id] || [];
+      const itemsByWorkshop = {};
+      for (const it of items) itemsByWorkshop[it.workshop_id] = it;
+
+      // Render in display_order
+      const cards = workshops.map(w => {
+        const item = itemsByWorkshop[w.id];
+        if (!item) return '';
+        const seats = item.available;
+        const isMine = isPickedSession(item.session_id);
+        const slotTaken = pickedSlotIds().has(slot.id) && !isMine;
+        const workshopTaken = pickedWorkshopIds().has(w.id) && !isMine;
+        const atMax = myPicks.length >= 4 && !isMine;
+        const full = seats === 0 && !isMine;
+        const closed = isClosed();
+
+        let state = 'available';
+        if (isMine) state = 'picked';
+        else if (full) state = 'full';
+        else if (seats <= 5) state = 'filling';
+
+        const disabled = !isMine && (slotTaken || workshopTaken || full || atMax || closed);
+        let reason = '';
+        if (closed && !isMine) reason = '';
+        else if (isMine && closed) reason = '';
+        else if (workshopTaken) reason = 'Already picked in another slot';
+        else if (slotTaken) reason = 'You\'ve picked another workshop in this slot';
+        else if (atMax) reason = 'You\'ve reached 4 picks';
+        else if (full) reason = 'Full';
+
+        const seatLabel = isMine
+          ? 'Booked'
+          : (seats === 0 ? 'Full' : `${seats} seat${seats === 1 ? '' : 's'} left`);
+
+        return `
+          <div class="ws"
+               data-state="${state}"
+               data-disabled="${disabled}"
+               data-session-id="${item.session_id}"
+               data-workshop-id="${w.id}"
+               data-slot-id="${slot.id}">
+            <div class="ws-title">${escapeHtml(w.title)}</div>
+            <div class="ws-meta">${escapeHtml(w.presenter)}</div>
+            <div class="ws-room">Room ${escapeHtml(w.room)}</div>
+            ${reason ? `<div class="ws-disabled-reason">${escapeHtml(reason)}</div>` : ''}
+            <div class="ws-seats">${seatLabel}</div>
+          </div>
+        `;
+      }).join('');
+
+      return `
+        <section class="slot">
+          <div class="slot-header">${escapeHtml(slot.label)}</div>
+          <div class="workshops">${cards}</div>
+        </section>
+      `;
+    }).join('');
+
+    gridEl.innerHTML = html;
+
+    // My picks panel
+    const orderedPicks = myPicks
+      .map(p => {
+        const w = workshopById(p.workshop_id);
+        const slot = slots.find(s => s.id === p.slot_id);
+        return { ...p, w, slot };
+      })
+      .sort((a, b) => a.slot_id - b.slot_id);
+
+    picksCount.textContent = `${myPicks.length} of 4`;
+
+    if (orderedPicks.length === 0) {
+      picksList.innerHTML = '<li class="empty">No picks yet — click a workshop below to register.</li>';
+    } else {
+      picksList.innerHTML = orderedPicks.map(p => `
+        <li>
+          <div class="pick-info">
+            <strong>${escapeHtml(p.w.title)}</strong>
+            <span>${escapeHtml(p.slot.label)} · ${escapeHtml(p.w.presenter)} · Room ${escapeHtml(p.w.room)}</span>
+          </div>
+        </li>
+      `).join('');
+    }
+
+    if (myPicks.length < 4 && !isClosed()) {
+      picksStatus.innerHTML = `<div class="nudge">You can still pick ${4 - myPicks.length} more.</div>`;
+    } else if (myPicks.length === 4) {
+      picksStatus.innerHTML = `<div class="complete">All 4 picks locked in. You can still swap any of them until ${formatCutoff()}.</div>`;
+    } else {
+      picksStatus.innerHTML = '';
+    }
+  }
+
+  function formatCutoff() {
+    if (!editCutoff) return 'the cutoff';
+    return editCutoff.toLocaleString('en-NZ', {
+      weekday: 'short', day: 'numeric', month: 'short',
+      hour: 'numeric', minute: '2-digit',
+    });
+  }
+
+  function escapeHtml(s) {
+    if (s == null) return '';
+    return String(s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+  }
+
+  // ---- click handler ----
+  gridEl.addEventListener('click', async (e) => {
+    const card = e.target.closest('.ws');
+    if (!card) return;
+    if (card.dataset.disabled === 'true') return;
+    if (isClosed()) return;
+
+    const sessionId = card.dataset.sessionId;
+    if (pendingClicks.has(sessionId)) return;
+    pendingClicks.add(sessionId);
+    card.style.opacity = '0.6';
+
+    const isMine = isPickedSession(sessionId);
+    try {
+      const rpc = isMine ? 'unregister_from_session' : 'register_for_session';
+      const { data, error } = await SB.rpc(rpc, { p_session_id: sessionId });
+      if (error) throw error;
+      if (!data.ok) {
+        toast(explainError(data.error), 'error');
+      } else {
+        toast(isMine ? 'Cancelled.' : 'Registered ✓', 'success');
+      }
+      // Refresh both seats and picks regardless (cheap)
+      await Promise.all([loadSeats(), loadMyPicks()]);
+      render();
+    } catch (err) {
+      console.error(err);
+      toast('Something went wrong. Try again.', 'error');
+    } finally {
+      pendingClicks.delete(sessionId);
+      card.style.opacity = '';
+    }
+  });
+
+  // ---- polling for live seat counts ----
+  function startPolling() {
+    if (pollHandle) clearInterval(pollHandle);
+    pollHandle = setInterval(async () => {
+      try {
+        await loadSeats();
+        // Don't reload my picks during poll — they only change on user action.
+        render();
+      } catch (e) { /* ignore transient */ }
+    }, 10_000);
+  }
+
+  // ---- main ----
+  async function main() {
+    session = await getSession();
+    if (!session) {
+      loadingEl.hidden = true;
+      signinView.hidden = false;
+      return;
+    }
+
+    // Domain belt-and-braces (the trigger should already block this, but if not, sign them out)
+    const email = session.user?.email || '';
+    if (!email.toLowerCase().endsWith('@diocesan.school.nz')) {
+      toast('Only @diocesan.school.nz accounts can register.', 'error');
+      await SB.auth.signOut();
+      setTimeout(() => location.reload(), 1500);
+      return;
+    }
+
+    // user bar
+    const name = session.user.user_metadata?.full_name || session.user.user_metadata?.name || email;
+    userBar.innerHTML = `<span>${escapeHtml(name)}</span><button id="signout-btn">Sign out</button>`;
+    $('#signout-btn').addEventListener('click', signOut);
+
+    try {
+      await loadStatic();
+      await Promise.all([loadSeats(), loadMyPicks()]);
+      loadingEl.hidden = true;
+      signupView.hidden = false;
+      render();
+      startPolling();
+    } catch (e) {
+      console.error(e);
+      loadingEl.innerHTML = '<p style="color:var(--red)">Couldn\'t load data. Try refreshing the page.</p>';
+    }
+  }
+
+  // React to OAuth redirect on first load
+  SB.auth.onAuthStateChange((event, sess) => {
+    if (event === 'SIGNED_IN' && !session) location.reload();
+  });
+
+  main();
+</script>
+
 </body>
 </html>
