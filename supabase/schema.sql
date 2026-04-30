@@ -91,8 +91,12 @@ insert into public.workshops (id, presenter, title, room, display_order) values
   ('simon-claude',    'Simon',       'Claude: your supply chain to superpowers',      'C158',  7),
   ('jo-grading',      'Jo',          'AI for grading & feedback',                     'C161',  8),
   ('zoe-gamma',       'Zoe',         'Gamma: classroom slides, made easy',            'C164',  9),
-  ('chris-properly',  'Chris',       'Gemini & NotebookLM, properly',                 'C175', 10)
-on conflict (id) do nothing;
+  ('chris-properly',  'Chris',       'Gemini & NotebookLM, prompting',                'C175', 10)
+on conflict (id) do update set
+  presenter     = excluded.presenter,
+  title         = excluded.title,
+  room          = excluded.room,
+  display_order = excluded.display_order;
 
 -- Generate the 40 sessions (10 workshops × 4 slots)
 insert into public.sessions (workshop_id, slot_id, capacity)
